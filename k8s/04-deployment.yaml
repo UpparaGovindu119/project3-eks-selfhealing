@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastapi-selfheal
+  namespace: production-app
+  labels:
+    app: fastapi-selfheal
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: fastapi-selfheal
+  template:
+    metadata:
+      labels:
+        app: fastapi-selfheal
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: fastapi-selfheal
+          image: upparagovindu/fastapi-selfheal:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: fastapi-config
+            - secretRef:
+                name: fastapi-secrets
+          volumeMounts:
+            - name: app-storage
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+      volumes:
+        - name: app-storage
+          persistentVolumeClaim:
+            claimName: fastapi-data-pvc
