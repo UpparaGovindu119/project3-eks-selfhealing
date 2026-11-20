@@ -46,7 +46,7 @@ jobs:
             --region "${{ secrets.AWS_REGION }}" \
             --name "${{ secrets.CLUSTER_NAME }}"
 
-      - name: Apply Kubernetes manifests and rollout deployment
+      - name: Apply Kubernetes & Monitoring manifests and rollout
         run: |
           kubectl apply -f k8s/00-namespace.yaml
           kubectl apply -f k8s/01-configmap.yaml
@@ -61,5 +61,8 @@ jobs:
           kubectl set image deployment/fastapi-selfheal \
             fastapi-selfheal="${{ secrets.DOCKER_USERNAME }}/fastapi-selfheal:${{ github.sha }}" \
             -n production-app
+
+          kubectl apply -f monitoring/servicemonitor.yaml
+          kubectl apply -f monitoring/grafana-dashboard-cm.yaml
 
           kubectl rollout status deployment/fastapi-selfheal -n production-app --timeout=180s
